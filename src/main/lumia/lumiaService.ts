@@ -2,7 +2,6 @@
 // Connects to the local Lumia Stream WebSocket API at ws://localhost:39231
 // and forwards chat events into the app exactly as TwitchService did.
 
-import http from 'http';
 import WebSocket from 'ws';
 import { DatabaseService, ChatMessage } from '../database/service';
 import { CommandProcessor, CommandContext } from '../commands/commandProcessor';
@@ -258,44 +257,41 @@ export class LumiaService {
 
     if (result.response) {
       console.log(`[Lumia Command] Response to ${displayName}: ${result.response}`);
-      await this.sendChatReply(result.response);
+      // TTS the response locally
+      const responseMsg: ChatMessage = {
+        viewer_id: 'system',
+        username: 'lumia-koko',
+        display_name: 'Lumia Koko',
+        message: result.response,
+        timestamp: new Date().toISOString(),
+        platform: 'system',
+        was_read_by_tts: false,
+      };
+      this.onMessageCallback?.(responseMsg);
+      // Also send to each user-enabled platform via Lumia's chatbot API
+      this.sendChatbotMessage(result.response);
     }
   }
 
-  private sendChatReply(message: string): Promise<void> {
-    if (!this.apiKey) return Promise.resolve();
+  private sendChatbotMessage(text: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-    const body = JSON.stringify({
-      type: 'chatbot-message',
-      params: { value: message },
-    });
+    const raw = DatabaseService.getSetting('chatbot_platforms');
+    const platforms: string[] = raw ? JSON.parse(raw) : [];
+    if (platforms.length === 0) return;
 
-    const options: http.RequestOptions = {
-      hostname: 'localhost',
-      port: LUMIA_WS_PORT,
-      path: `/api/send?token=${encodeURIComponent(this.apiKey)}`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
-    };
-
-    return new Promise((resolve) => {
-      const req = http.request(options, (res) => {
-        res.resume();
-        if (res.statusCode !== 200) {
-          console.warn(`[Lumia] Chat reply returned status ${res.statusCode}`);
-        }
-        resolve();
+    for (const platform of platforms) {
+      const packet = JSON.stringify({
+        type: 'chatbot-message',
+        params: {
+          value: text,
+          platform,
+          userToChatAs: 'self',
+        },
       });
-      req.on('error', (err: Error) => {
-        console.warn('[Lumia] Failed to send chat reply:', err.message);
-        resolve();
-      });
-      req.write(body);
-      req.end();
-    });
+      this.ws.send(packet);
+      console.log(`[Lumia Chatbot] Sent reply to ${platform}: ${text}`);
+    }
   }
 
   private flushMessageQueue(): void {

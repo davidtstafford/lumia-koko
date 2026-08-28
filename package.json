@@ -1,6 +1,6 @@
 {
   "name": "lumia-koko",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Offline Lumia Stream Chat-to-TTS powered by Kokoro AI — no cloud required",
   "main": "./dist/main.js",
   "author": "David Stafford",

@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
 
+const ALL_PLATFORMS = ['twitch', 'kick', 'tiktok', 'youtube', 'facebook'] as const;
+type Platform = typeof ALL_PLATFORMS[number];
+
+const PLATFORM_LABELS: Record<Platform, string> = {
+  twitch:   'Twitch',
+  kick:     'Kick',
+  tiktok:   'TikTok',
+  youtube:  'YouTube',
+  facebook: 'Facebook',
+};
+
 const Connection: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [savedApiKey, setSavedApiKey] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [status, setStatus] = useState('');
+  const [chatbotPlatforms, setChatbotPlatforms] = useState<Platform[]>([]);
 
   useEffect(() => {
     checkConnection();
@@ -32,9 +44,20 @@ const Connection: React.FC = () => {
       const connected = await window.api.invoke('lumia:isConnected');
       setIsConnected(connected);
       if (connected) setStatus('Connected to Lumia Stream');
+
+      const raw = await window.api.invoke('db:getSetting', 'chatbot_platforms');
+      if (raw) setChatbotPlatforms(JSON.parse(raw) as Platform[]);
     } catch (error) {
       console.error('Error checking connection:', error);
     }
+  };
+
+  const togglePlatform = async (platform: Platform) => {
+    const updated = chatbotPlatforms.includes(platform)
+      ? chatbotPlatforms.filter(p => p !== platform)
+      : [...chatbotPlatforms, platform];
+    setChatbotPlatforms(updated);
+    await window.api.invoke('db:setSetting', 'chatbot_platforms', JSON.stringify(updated));
   };
 
   const handleConnect = async () => {
@@ -160,6 +183,36 @@ const Connection: React.FC = () => {
           Lumia Stream must be running in the background for the connection to work.
           The app connects to <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>ws://localhost:39231</code>.
         </p>
+      </div>
+
+      <div className="card" style={{ maxWidth: 520 }}>
+        <h3 style={{ marginBottom: 4 }}>Command Reply Platforms</h3>
+        <p style={{ fontSize: 13, color: '#888', marginBottom: 14 }}>
+          When a viewer runs a command (e.g. <code style={{ background: '#1a1a1a', padding: '1px 5px', borderRadius: 3 }}>~hello</code>),
+          the response will be sent to chat on every platform ticked below.
+          Only enable platforms you have connected in Lumia Stream.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {ALL_PLATFORMS.map(platform => (
+            <label
+              key={platform}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}
+            >
+              <input
+                type="checkbox"
+                checked={chatbotPlatforms.includes(platform)}
+                onChange={() => togglePlatform(platform)}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              <span>{PLATFORM_LABELS[platform]}</span>
+            </label>
+          ))}
+        </div>
+        {chatbotPlatforms.length === 0 && (
+          <p style={{ marginTop: 12, fontSize: 12, color: '#666' }}>
+            No platforms selected — command replies will only be read via TTS locally.
+          </p>
+        )}
       </div>
     </div>
   );
