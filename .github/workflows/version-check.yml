@@ -1,0 +1,50 @@
+name: Version Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR branch version
+        id: pr-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "PR branch version: $VERSION"
+
+      - name: Get main branch version
+        id: main-version
+        run: |
+          git fetch origin main
+          git checkout origin/main
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Main branch version: $VERSION"
+
+      - name: Compare versions
+        run: |
+          PR_VERSION="${{ steps.pr-version.outputs.version }}"
+          MAIN_VERSION="${{ steps.main-version.outputs.version }}"
+
+          echo "PR Version: $PR_VERSION"
+          echo "Main Version: $MAIN_VERSION"
+
+          if [ "$PR_VERSION" = "$MAIN_VERSION" ]; then
+            echo "❌ ERROR: Version number has not been bumped!"
+            echo "Please update the version in package.json before merging to main."
+            echo "Current version: $MAIN_VERSION"
+            echo "Use 'npm version patch/minor/major' to bump the version."
+            exit 1
+          else
+            echo "✅ Version has been bumped from $MAIN_VERSION to $PR_VERSION"
+          fi
