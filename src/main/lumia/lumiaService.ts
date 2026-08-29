@@ -27,6 +27,9 @@ export class LumiaService {
   private apiKey: string | null = null;
   private commandProcessor: CommandProcessor;
   private destroyed = false;
+  // Texts of recent bot replies — used to suppress the relay echo from TTS.
+  // Entries expire after 10 s, covering all platforms the message was sent to.
+  private pendingBotReplies = new Set<string>();
 
   constructor() {
     this.commandProcessor = new CommandProcessor();
@@ -210,6 +213,9 @@ export class LumiaService {
   }
 
   private async processChat(lumiaId: string | null, username: string, displayName: string, message: string, platform: string): Promise<void> {
+    // Suppress relay echoes of bot command replies.
+    if (this.pendingBotReplies.has(message)) return;
+
     const viewerId = DatabaseService.findOrCreateViewer(lumiaId, username, displayName);
     DatabaseService.incrementViewerMessageCount(viewerId);
 
@@ -257,18 +263,8 @@ export class LumiaService {
 
     if (result.response) {
       console.log(`[Lumia Command] Response to ${displayName}: ${result.response}`);
-      // TTS the response locally
-      const responseMsg: ChatMessage = {
-        viewer_id: 'system',
-        username: 'lumia-koko',
-        display_name: 'Lumia Koko',
-        message: result.response,
-        timestamp: new Date().toISOString(),
-        platform: 'system',
-        was_read_by_tts: false,
-      };
-      this.onMessageCallback?.(responseMsg);
-      // Also send to each user-enabled platform via Lumia's chatbot API
+      // Post to chat via Lumia chatbot — Lumia will relay it back as a real chat
+      // message which then goes through the normal TTS pipeline.
       this.sendChatbotMessage(result.response);
     }
   }
@@ -279,6 +275,10 @@ export class LumiaService {
     const raw = DatabaseService.getSetting('chatbot_platforms');
     const platforms: string[] = raw ? JSON.parse(raw) : [];
     if (platforms.length === 0) return;
+
+    // Track the reply text so the relay echo is suppressed in processChat.
+    this.pendingBotReplies.add(text);
+    setTimeout(() => this.pendingBotReplies.delete(text), 10_000);
 
     for (const platform of platforms) {
       const packet = JSON.stringify({

@@ -130,7 +130,7 @@ export class CommandProcessor {
       : VoiceService.getAllVoices().slice(0, 10);
 
     if (voices.length === 0) {
-      return { success: true, response: `@${ctx.displayName} No voices found. Use ~setvoice <voice_id>` };
+      return { success: true, response: `@${ctx.displayName} No voices found. Use ~setvoice [voice_id]` };
     }
 
     const list = voices.map(v => `${v.voice_id} (${v.name})`).join(', ');
@@ -143,7 +143,7 @@ export class CommandProcessor {
   private async handleSetVoice(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const voiceId = args[0]?.toLowerCase();
     if (!voiceId) {
-      return { success: false, error: `@${ctx.displayName} Usage: ~setvoice <voice_id>  (e.g. ~setvoice af_heart)` };
+      return { success: false, error: `@${ctx.displayName} Usage: ~setvoice [voice_id]  (e.g. ~setvoice af_heart)` };
     }
 
     if (!VoiceService.isVoiceAvailable(voiceId)) {
@@ -164,7 +164,7 @@ export class CommandProcessor {
   private async handleSetVoiceSpeed(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const speed = parseFloat(args[0] ?? '');
     if (isNaN(speed) || speed < 0.25 || speed > 4.0) {
-      return { success: false, error: `@${ctx.displayName} Usage: ~setvoicespeed <0.25–4.0>` };
+      return { success: false, error: `@${ctx.displayName} Usage: ~setvoicespeed [0.25-4.0]` };
     }
 
     const pref = VoiceService.getViewerVoicePreference(ctx.viewerId);
@@ -176,7 +176,7 @@ export class CommandProcessor {
   private async handleSetVolume(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const val = parseInt(args[0] ?? '');
     if (isNaN(val) || val < 0 || val > 100) {
-      return { success: false, error: `@${ctx.displayName} Usage: ~setvolume <0–100>  (e.g. ~setvolume 75). 100 = master volume.` };
+      return { success: false, error: `@${ctx.displayName} Usage: ~setvolume [0-100]  (e.g. ~setvolume 75). 100 = master volume.` };
     }
     const pref = VoiceService.getViewerVoicePreference(ctx.viewerId);
     const voiceId = pref?.voice_id ?? DatabaseService.getSetting('tts_default_voice') ?? 'af_heart';
@@ -232,17 +232,17 @@ export class CommandProcessor {
     help:            { usage: '~help [command]',              level: 'viewer',    description: 'List all commands, or get details on one. E.g. ~help setvoice' },
     hello:           { usage: '~hello',                       level: 'viewer',    description: 'Say hello and get a tip about Stream Koko.' },
     voices:          { usage: '~voices [search]',             level: 'viewer',    description: 'List available voices. Optional search term filters by name or language.' },
-    setvoice:        { usage: '~setvoice <voice_id>',         level: 'viewer',    description: 'Set your personal TTS voice. E.g. ~setvoice af_heart. Use ~voices to browse.' },
-    setvoicespeed:   { usage: '~setvoicespeed <0.25–4.0>',    level: 'viewer',    description: 'Set your personal TTS speed. 1.0 = normal, 0.5 = half speed, 2.0 = double.' },
-    setvolume:       { usage: '~setvolume <0–100>',           level: 'viewer',    description: 'Set your TTS volume as a % of master. 100 = full master volume. Cannot exceed master.' },
+    setvoice:        { usage: '~setvoice [voice_id]',         level: 'viewer',    description: 'Set your personal TTS voice. E.g. ~setvoice af_heart. Use ~voices to browse.' },
+    setvoicespeed:   { usage: '~setvoicespeed [0.25-4.0]',    level: 'viewer',    description: 'Set your personal TTS speed. 1.0 = normal, 0.5 = half speed, 2.0 = double.' },
+    setvolume:       { usage: '~setvolume [0-100]',           level: 'viewer',    description: 'Set your TTS volume as a % of master. 100 = full master volume. Cannot exceed master.' },
     randomvoice:     { usage: '~randomvoice',                 level: 'viewer',    description: 'Assign yourself a completely random TTS voice. Feeling adventurous? 🎲' },
     myvoice:         { usage: '~myvoice',                     level: 'viewer',    description: 'Show your current voice, speed and volume settings.' },
     resetvoice:      { usage: '~resetvoice',                  level: 'viewer',    description: 'Reset your voice, speed and volume back to the stream defaults.' },
     skip:            { usage: '~skip',                        level: 'moderator', description: 'Skip the currently-playing TTS message.' },
-    mutevoice:       { usage: '~mutevoice <user> [mins]',     level: 'moderator', description: 'Silence a viewer\'s TTS. Optional minutes duration (default: permanent).' },
-    unmutevoice:     { usage: '~unmutevoice <user>',          level: 'moderator', description: 'Re-enable TTS for a muted viewer.' },
-    cooldownvoice:   { usage: '~cooldownvoice <user> [secs]', level: 'moderator', description: 'Set minimum gap between TTS messages for a viewer. Default: 30s.' },
-    uncooldownvoice: { usage: '~uncooldownvoice <user>',      level: 'moderator', description: 'Remove per-viewer TTS cooldown.' },
+    mutevoice:       { usage: '~mutevoice [user] [mins]',     level: 'moderator', description: 'Silence a viewer\'s TTS. Optional minutes duration (default: permanent).' },
+    unmutevoice:     { usage: '~unmutevoice [user]',          level: 'moderator', description: 'Re-enable TTS for a muted viewer.' },
+    cooldownvoice:   { usage: '~cooldownvoice [user] [secs]', level: 'moderator', description: 'Set minimum gap between TTS messages for a viewer. Default: 30s.' },
+    uncooldownvoice: { usage: '~uncooldownvoice [user]',      level: 'moderator', description: 'Remove per-viewer TTS cooldown.' },
     mutetts:         { usage: '~mutetts',                     level: 'moderator', description: 'Pause all TTS globally.' },
     unmutetts:       { usage: '~unmutetts',                   level: 'moderator', description: 'Resume all TTS globally.' },
     clearqueue:      { usage: '~clearqueue',                  level: 'moderator', description: 'Flush the entire TTS queue immediately.' },
@@ -273,13 +273,13 @@ export class CommandProcessor {
     if (ctx.isModerator || ctx.isBroadcaster) {
       parts.push(`Mod: ${modCmds.filter(isEnabled).map(n => `~${n}`).join(' ')}`);
     }
-    parts.push('~help <cmd> for details.');
+    parts.push('~help [cmd] for details.');
     return { success: true, response: parts.join(' | ') };
   }
 
   private async handleMuteVoice(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const target = args[0]?.replace('@', '').toLowerCase();
-    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~mutevoice <username> [minutes]` };
+    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~mutevoice [username] [minutes]` };
     const minutes = args[1] ? parseInt(args[1]) : null;
 
     const viewer = DatabaseService.getViewerByUsername(target);
@@ -303,7 +303,7 @@ export class CommandProcessor {
 
   private async handleUnmuteVoice(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const target = args[0]?.replace('@', '').toLowerCase();
-    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~unmutevoice <username>` };
+    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~unmutevoice [username]` };
 
     const viewer = DatabaseService.getViewerByUsername(target);
     if (!viewer) return { success: false, error: `@${ctx.displayName} "${target}" not found` };
@@ -319,7 +319,7 @@ export class CommandProcessor {
 
   private async handleCooldownVoice(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const target = args[0]?.replace('@', '').toLowerCase();
-    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~cooldownvoice <username> [gap_seconds]` };
+    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~cooldownvoice [username] [gap_seconds]` };
     const gapSecs = args[1] ? parseInt(args[1]) : 30;
 
     const viewer = DatabaseService.getViewerByUsername(target);
@@ -338,7 +338,7 @@ export class CommandProcessor {
 
   private async handleUncooldownVoice(ctx: CommandContext, args: string[]): Promise<CommandResult> {
     const target = args[0]?.replace('@', '').toLowerCase();
-    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~uncooldownvoice <username>` };
+    if (!target) return { success: false, error: `@${ctx.displayName} Usage: ~uncooldownvoice [username]` };
 
     const viewer = DatabaseService.getViewerByUsername(target);
     if (!viewer) return { success: false, error: `@${ctx.displayName} "${target}" not found` };

@@ -93,8 +93,13 @@ export class DatabaseService {
   }
 
   static getViewerByUsername(username: string): Viewer | null {
-    const row = getDatabase().prepare('SELECT * FROM viewers WHERE LOWER(username) = ?')
-      .get(username.toLowerCase()) as any | undefined;
+    const lower = username.toLowerCase();
+    // Match on username first, then fall back to display_name — covers cases where
+    // the same person has different usernames across platforms (Lumia merges them,
+    // but the stored username reflects the last platform seen).
+    const row = getDatabase().prepare(
+      'SELECT * FROM viewers WHERE LOWER(username) = ? OR LOWER(display_name) = ? LIMIT 1'
+    ).get(lower, lower) as any | undefined;
     if (!row) return null;
     return { ...row, is_moderator: row.is_moderator === 1 || row.is_moderator === true };
   }
